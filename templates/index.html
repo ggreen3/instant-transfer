@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instant Transfer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .dna-animation {
+            font-family: monospace;
+            white-space: pre;
+        }
+    </style>
+</head>
+<body>
+    <h1>Instant Data Transfer</h1>
+    <input type="text" id="message" placeholder="Type a message">
+    <button onclick="sendMessage()">Send</button>
+    <ul id="messages"></ul>
+
+    <h2>File Transfer</h2>
+    <form id="uploadForm">
+        <input type="file" id="file" name="file">
+        <button type="button" onclick="uploadFile()">Upload</button>
+        <div class="loader" id="fileLoader"></div>
+    </form>
+
+    <h2>DNA Encoding/Decoding</h2>
+    <div id="dnaAnimation" class="dna-animation"></div>
+
+    <script>
+        const socket = io();
+        const dnaAnimation = document.getElementById('dnaAnimation');
+
+        socket.on('message', function(data) {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${data.timestamp}</strong>: ${data.message} <br> <small>DNA: ${data.encoded}</small>`;
+            document.getElementById('messages').appendChild(li);
+
+            // Animate DNA decoding
+            animateDNA(data.encoded, data.message);
+        });
+
+        function sendMessage() {
+            const message = document.getElementById('message').value;
+            const encoded = dnaEncode(message);  // Encode the message into DNA
+            socket.send({ encoded: encoded });
+            document.getElementById('message').value = '';
+        }
+
+        function uploadFile() {
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const fileLoader = document.getElementById('fileLoader');
+            fileLoader.style.display = 'block';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.text())
+              .then(data => {
+                  alert(data);
+                  fileLoader.style.display = 'none';
+              })
+              .catch(error => {
+                  console.error(error);
+                  fileLoader.style.display = 'none';
+              });
+        }
+
+        function dnaEncode(text) {
+            // Simple DNA encoding: A=00, T=01, C=10, G=11
+            const dnaMap = {'A': '00', 'T': '01', 'C': '10', 'G': '11'};
+            let binary = '';
+            for (let char of text) {
+                binary += char.charCodeAt(0).toString(2).padStart(8, '0');
+            }
+            let dna = '';
+            for (let i = 0; i < binary.length; i += 2) {
+                const bits = binary.slice(i, i + 2);
+                dna += Object.keys(dnaMap).find(key => dnaMap[key] === bits);
+            }
+            return dna;
+        }
+
+        function animateDNA(encoded, decoded) {
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= encoded.length) {
+                    clearInterval(interval);
+                    dnaAnimation.textContent = `Decoded: ${decoded}`;
+                } else {
+                    dnaAnimation.textContent = `Decoding: ${encoded.slice(0, i + 1)}`;
+                    i++;
+                }
+            }, 100);  // Adjust speed as needed
+        }
+    </script>
+</body>
+</html>
